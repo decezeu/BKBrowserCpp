@@ -72,8 +72,11 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IncludePath>D:\BK++\BKBrowser\cef\include\capi\test;D:\BK++\BKBrowser\cef\include\capi\views;D:\BK++\BKBrowser\cef\include\test;D:\BK++\BKBrowser\cef\include\views;D:\BK++\BKBrowser\cef\include\wrapper;D:\BK++\BKBrowser\cef\include\internal;D:\BK++\BKBrowser\cef\include\capi;D:\BK++\BKBrowser\cef\include\base\internal;D:\BK++\BKBrowser\cef\include\base;cef\include;$(IncludePath)</IncludePath>
-    <LibraryPath>D:\BK++\BKBrowser\cef\Debug;$(LibraryPath)</LibraryPath>
-    <ExecutablePath>D:\BK++\BKBrowser\cef\Debug;$(ExecutablePath)</ExecutablePath>
+    <LibraryPath>.\cef\libcef_dll_wrapper\Debug;.\cef\libcef;$(LibraryPath)</LibraryPath>
+    <ExecutablePath>.\cef\libcef;$(ExecutablePath)</ExecutablePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LibraryPath>.\cef\libcef\Release;.\cef\libcef_dll_wrapper\Release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -117,7 +120,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>libcef.lib;libcef_dll_wrapper.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>D:\BK++\BKBrowser\cef\Debug;D:\BK++\BKBrowser\cef\libcef_dll_wrapper\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>.\cef\libcef;.\cef\libcef_dll_wrapper\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -128,6 +131,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -135,7 +139,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>libcef.lib;libcef_dll_wrapper.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>D:\BK++\BKBrowser\cef\Debug;D:\BK++\BKBrowser\cef\libcef_dll_wrapper\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>.\cef\libcef\Release;.\cef\libcef_dll_wrapper\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

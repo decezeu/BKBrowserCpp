@@ -10,6 +10,12 @@
 *.userosscache
 *.sln.docstates
 *.env
+cef/libcef/*.dll
+cef/libcef/*.exe
+cef/libcef/v8_context_snapshot.bin
+cef/libcef/vk_swiftshader_icd.json
+cef/libcef_dll/
+cef/libcef_dll_wrapper/
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs

@@ -7,7 +7,8 @@
 #define IDR_MAINFRAME			128
 #define IDD_BKBROWSER_DIALOG	102
 #define IDD_ABOUTBOX			103
-#define IDD_JS_DIALOG           110     // New JS input dialog
+#define IDD_JS_DIALOG       110
+
 
 #define IDM_ABOUT				104
 #define IDM_EXIT				105

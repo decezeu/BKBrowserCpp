@@ -20,6 +20,14 @@ private:
 };
 
 //--------------------------------------
+// CEF App (for initialization)
+//--------------------------------------
+class MyApp : public CefApp {
+public:
+  IMPLEMENT_REFCOUNTING(MyApp);
+};
+
+//--------------------------------------
 // Globals
 //--------------------------------------
 HWND g_hWnd = nullptr;
@@ -27,40 +35,25 @@ CefRefPtr<MyClient> g_Client;
 CefRefPtr<CefBrowser> g_Browser;
 
 //--------------------------------------
-// Dark theme helper
+// Helper functions
 //--------------------------------------
 void ApplyDarkTheme(HWND hwnd) {
-  // Window background
   SetClassLongPtr(hwnd, GCLP_HBRBACKGROUND, (LONG_PTR)GetSysColorBrush(COLOR_WINDOW));
-
-  // Apply dark style to buttons
-  HWND child = GetWindow(hwnd, GW_CHILD);
-  while (child) {
-    TCHAR class_name[32] = {};
-    GetClassName(child, class_name, _countof(class_name));
-    if (_tcscmp(class_name, _T("Button")) == 0) {
-      SetWindowLongPtr(child, GWL_EXSTYLE, WS_EX_CLIENTEDGE);
-      SetBkColor(GetDC(child), RGB(40, 40, 40));
-      SetTextColor(GetDC(child), RGB(220, 220, 220));
-    }
-    child = GetWindow(child, GW_HWNDNEXT);
-  }
 }
 
-//--------------------------------------
-// JS input dialog
-//--------------------------------------
 std::wstring GetJSCode(HWND parent) {
+  INT_PTR result;
   WCHAR buffer[1024] = { 0 };
-  INT_PTR result = DialogBoxParam(GetModuleHandle(nullptr), MAKEINTRESOURCE(IDD_JS_DIALOG),
+
+  result = DialogBoxParam(GetModuleHandle(nullptr), MAKEINTRESOURCE(IDD_JS_DIALOG),
     parent, [](HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) -> INT_PTR {
       switch (uMsg) {
       case WM_COMMAND:
         switch (LOWORD(wParam)) {
         case IDOK:
+          EndDialog(hwndDlg, IDOK); return TRUE;
         case IDCANCEL:
-          EndDialog(hwndDlg, LOWORD(wParam));
-          return TRUE;
+          EndDialog(hwndDlg, IDCANCEL); return TRUE;
         }
         break;
       }
@@ -68,15 +61,12 @@ std::wstring GetJSCode(HWND parent) {
     }, 0);
 
   if (result == IDOK) {
-    GetDlgItemText(GetActiveWindow(), IDC_EDIT1, buffer, _countof(buffer));
+    GetDlgItemText(parent, IDC_EDIT1, buffer, _countof(buffer));
     return std::wstring(buffer);
   }
   return L"";
 }
 
-//--------------------------------------
-// Button actions
-//--------------------------------------
 void LoadURL(const std::string& url) {
   if (g_Browser) {
     g_Browser->GetMainFrame()->LoadURL(url);
@@ -85,9 +75,11 @@ void LoadURL(const std::string& url) {
 
 void ExecuteJS(const std::wstring& jsCode) {
   if (g_Browser) {
-    g_Browser->GetMainFrame()->ExecuteJavaScript(
-      std::string(jsCode.begin(), jsCode.end()),
-      g_Browser->GetMainFrame()->GetURL(), 0);
+    int size_needed = WideCharToMultiByte(CP_UTF8, 0, jsCode.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    std::string js_utf8(size_needed - 1, 0);
+    WideCharToMultiByte(CP_UTF8, 0, jsCode.c_str(), -1, js_utf8.data(), size_needed, nullptr, nullptr);
+
+    g_Browser->GetMainFrame()->ExecuteJavaScript(js_utf8, g_Browser->GetMainFrame()->GetURL(), 0);
   }
 }
 
@@ -96,11 +88,10 @@ void ExecuteJS(const std::wstring& jsCode) {
 //--------------------------------------
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
   switch (msg) {
-  case WM_CREATE:
-  {
+  case WM_CREATE: {
     g_hWnd = hwnd;
 
-    // Create buttons
+    // Buttons
     CreateWindow(L"BUTTON", L"Google", WS_CHILD | WS_VISIBLE, 10, 10, 100, 30, hwnd, (HMENU)1001, nullptr, nullptr);
     CreateWindow(L"BUTTON", L"StackOverflow", WS_CHILD | WS_VISIBLE, 120, 10, 100, 30, hwnd, (HMENU)1002, nullptr, nullptr);
     CreateWindow(L"BUTTON", L"GitHub", WS_CHILD | WS_VISIBLE, 230, 10, 100, 30, hwnd, (HMENU)1003, nullptr, nullptr);
@@ -108,21 +99,25 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 
     ApplyDarkTheme(hwnd);
 
-    // Create CEF browser
+    // CEF browser
+    RECT clientRect;
+    GetClientRect(hwnd, &clientRect);
+
     CefWindowInfo window_info;
-    RECT rect;
-    GetClientRect(hwnd, &rect);
-    CefRect cef_rect(0, 50, rect.right, rect.bottom - 50); // offset for button panel
-    window_info.SetAsChild(hwnd, cef_rect);
+    CefRect cefRect(clientRect.left, clientRect.top + 50,
+      clientRect.right - clientRect.left,
+      clientRect.bottom - clientRect.top - 50);
+    window_info.SetAsChild(hwnd, cefRect);
 
     CefBrowserSettings browser_settings;
     g_Browser = CefBrowserHost::CreateBrowserSync(
-      window_info, g_Client.get(), "https://www.google.com", browser_settings, nullptr, nullptr);
-
+      window_info, g_Client.get(),
+      "https://www.google.com", browser_settings, nullptr, nullptr
+    );
     break;
   }
-  case WM_COMMAND:
-  {
+
+  case WM_COMMAND: {
     switch (LOWORD(wParam)) {
     case 1001: LoadURL("https://www.google.com"); break;
     case 1002: LoadURL("https://stackoverflow.com"); break;
@@ -135,17 +130,25 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     }
     break;
   }
-  case WM_SIZE:
-  {
+
+  case WM_SIZE: {
     if (g_Browser) {
-      RECT rect;
-      GetClientRect(hwnd, &rect);
-      MoveWindow(g_Browser->GetHost()->GetWindowHandle(),
-        0, 50, rect.right, rect.bottom - 50, TRUE);
-      g_Browser->GetHost()->WasResized();
+      RECT clientRect;
+      GetClientRect(hwnd, &clientRect);
+      CefRefPtr<CefBrowserHost> host = g_Browser->GetHost();
+      host->WasResized();
+
+      CefWindowHandle browserHwnd = host->GetWindowHandle();
+      MoveWindow(browserHwnd,
+        clientRect.left,
+        clientRect.top + 50,
+        clientRect.right - clientRect.left,
+        clientRect.bottom - clientRect.top - 50,
+        TRUE);
     }
     break;
   }
+
   case WM_DESTROY:
     PostQuitMessage(0);
     break;
@@ -158,18 +161,25 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 //--------------------------------------
 // Main
 //--------------------------------------
-int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow) {
+int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow) {
   CefMainArgs main_args(hInstance);
   CefSettings settings;
   settings.no_sandbox = true;
   settings.multi_threaded_message_loop = true;
+  CefString(&settings.cache_path) = L".\\cef_cache";
 
-  CefInitialize(main_args, settings, nullptr, nullptr);
-
+  CefRefPtr<MyApp> app = new MyApp();
   g_Client = new MyClient();
 
+  void* windows_sandbox_info = nullptr;
+
+  if (!CefInitialize(main_args, settings, app.get(), windows_sandbox_info)) {
+    MessageBox(nullptr, L"CEF initialization failed!", L"Error", MB_OK);
+    return -1;
+  }
+
   // Register window class
-  WNDCLASSEX wcex = {};
+  WNDCLASSEX wcex{};
   wcex.cbSize = sizeof(WNDCLASSEX);
   wcex.style = CS_HREDRAW | CS_VREDRAW;
   wcex.lpfnWndProc = WndProc;
@@ -185,7 +195,6 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
   ShowWindow(hwnd, nCmdShow);
   UpdateWindow(hwnd);
 
-  // Run message loop
   MSG msg;
   while (GetMessage(&msg, nullptr, 0, 0)) {
     TranslateMessage(&msg);
@@ -194,5 +203,5 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
   }
 
   CefShutdown();
-  return (int)msg.wParam;
+  return static_cast<int>(msg.wParam);
 }
